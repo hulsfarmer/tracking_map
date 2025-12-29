@@ -3,214 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Footprints Final</title>
+    <title>Footprints Pro Final</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
         body { font-family: -apple-system, sans-serif; background-color: #f1f5f9; margin: 0; overflow: hidden; }
-        .app-container { width: 100%; max-width: 450px; height: 100vh; background: white; position: relative; display: flex; flex-col; margin: 0 auto; overflow: hidden; }
+        .app-container { width: 100%; max-width: 450px; height: 100vh; background: white; margin: 0 auto; position: relative; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.1); }
         
-        /* 홈 화면과 지도 화면 분리 */
-        .page { position: absolute; inset: 0; width: 100%; height: 100%; transition: transform 0.3s ease; background: white; z-index: 10; }
-        #map-page { z-index: 5; }
-        #map { width: 100%; height: 100%; }
+        /* 헤더 & 네비 스타일 */
+        header { z-index: 3000; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid #eee; }
+        nav { z-index: 3000; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-top: 1px solid #eee; }
 
-        .hidden-page { transform: translateX(100%); }
-        .active-page { transform: translateX(0); }
-
-        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid #eee; }
-        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; }
-        .nav-btn.active { color: #2563eb; font-weight: bold; }
+        /* 페이지 영역 */
+        .content-area { flex: 1; position: relative; overflow: hidden; }
+        #home-page, #map-page { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
         
-        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; margin-bottom: 20px; }
+        /* 지도 스타일 */
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        /* 카드 스타일 */
+        .course-card { background: white; border-radius: 24px; overflow: hidden; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        
+        /* 활성 버튼 스타일 */
+        .nav-btn.active { color: #2563eb; font-weight: 800; }
+        .nav-btn.inactive { color: #94a3b8; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        <header class="glass fixed top-0 w-full max-w-[450px] p-5 flex justify-between items-center z-[1000]">
-            <h1 class="text-xl font-black italic tracking-tighter">FOOTPRINTS<span class="text-blue-600">.</span></h1>
-            <div id="rec-badge" class="hidden flex items-center gap-1.5 bg-red-100 px-3 py-1 rounded-full">
+        <header class="h-16 flex justify-between items-center px-6 shrink-0">
+            <h1 class="text-xl font-black italic tracking-tighter text-slate-900">FOOTPRINTS<span class="text-blue-600">.</span></h1>
+            <div id="rec-status" class="hidden flex items-center gap-2 bg-red-50 px-3 py-1 rounded-full border border-red-100">
                 <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span class="text-[10px] font-bold text-red-600 uppercase">Recording</span>
+                <span class="text-[10px] font-black text-red-600 uppercase">REC</span>
             </div>
         </header>
 
-        <section id="home-page" class="page active-page overflow-y-auto p-6 pt-24 pb-32">
-            <h2 class="text-2xl font-extrabold text-slate-900 mb-6">나의 활동 피드</h2>
-            <div id="feed-container" class="space-y-6">
-                </div>
-        </section>
-
-        <section id="map-page" class="page hidden-page">
-            <div id="map"></div>
-            
-            <div class="absolute bottom-32 left-6 right-6 glass p-6 rounded-[2rem] z-[500] shadow-2xl">
-                <div class="flex justify-around mb-5">
-                    <div class="text-center">
-                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Distance</p>
-                        <p id="dist-txt" class="text-2xl font-black">0.0km</p>
+        <div class="content-area">
+            <section id="home-page" class="p-6 overflow-y-auto" style="display: block;">
+                <h2 class="text-2xl font-extrabold text-slate-900 mb-6">나의 활동</h2>
+                <div id="feed-list" class="space-y-6 pb-24">
                     </div>
-                    <div class="text-center">
-                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Photos</p>
-                        <p id="photo-count" class="text-2xl font-black">0</p>
+            </section>
+
+            <section id="map-page">
+                <div id="map"></div>
+                
+                <div class="absolute bottom-24 left-4 right-4 z-[1001] bg-white/90 backdrop-blur-md p-5 rounded-[2.5rem] shadow-2xl border border-white/50">
+                    <div class="flex justify-around items-center mb-5">
+                        <div class="text-center">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Distance</p>
+                            <p id="dist-val" class="text-2xl font-black text-slate-900 tracking-tight">0.0km</p>
+                        </div>
+                        <div class="w-px h-8 bg-slate-200"></div>
+                        <div class="text-center">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Photos</p>
+                            <p id="photo-val" class="text-2xl font-black text-slate-900 tracking-tight">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <label id="cam-trigger" class="hidden w-16 h-16 bg-slate-50 border border-slate-100 rounded-3xl flex items-center justify-center cursor-pointer active:scale-90 transition shadow-sm">
+                            <svg class="w-7 h-7 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <input type="file" id="real-cam" accept="image/*" capture="camera" class="hidden">
+                        </label>
+                        
+                        <button id="track-btn" onclick="toggleTracking()" class="flex-1 h-16 bg-blue-600 text-white font-black text-lg rounded-3xl shadow-lg active:scale-95 transition">트래킹 시작</button>
+                        
+                        <button onclick="saveCurrentCourse()" class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-3xl flex items-center justify-center active:scale-90 transition shadow-sm">
+                            <svg class="w-7 h-7 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                        </button>
                     </div>
                 </div>
-                <div class="flex gap-4">
-                    <label id="cam-btn" class="hidden w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center cursor-pointer active:scale-90 transition">
-                        <img src="https://cdn-icons-png.flaticon.com/512/685/685655.png" class="w-6 h-6 opacity-60">
-                        <input type="file" id="camera-input" accept="image/*" capture="camera" class="hidden">
-                    </label>
-                    <button id="main-btn" onclick="toggleTracking()" class="flex-1 h-14 bg-blue-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition">트래킹 시작</button>
-                    <button onclick="saveCourse()" class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center active:scale-90 transition">
-                        <img src="https://cdn-icons-png.flaticon.com/512/1358/1358023.png" class="w-6 h-6 opacity-60">
-                    </button>
-                </div>
-            </div>
-        </section>
+            </section>
+        </div>
 
-        <nav class="fixed bottom-0 w-full max-w-[450px] h-20 bg-white border-t flex z-[1000]">
-            <button onclick="navTo('home')" id="nav-home" class="nav-btn active">
-                <span class="text-[10px] font-black uppercase">Explore</span>
+        <nav class="h-20 flex shrink-0">
+            <button onclick="changePage('home')" id="nav-home" class="nav-btn active flex-1 flex flex-col items-center justify-center">
+                <span class="text-[10px] font-black tracking-widest uppercase">Explore</span>
             </button>
-            <button onclick="navTo('map')" id="nav-map" class="nav-btn">
-                <span class="text-[10px] font-black uppercase">Track</span>
+            <button onclick="changePage('map')" id="nav-map" class="nav-btn inactive flex-1 flex flex-col items-center justify-center">
+                <span class="text-[10px] font-black tracking-widest uppercase">Track</span>
             </button>
         </nav>
     </div>
 
     <script>
-        let map, polyline, watchId, isTracking = false, currentPath = [], currentPhotos = [];
-        let myCourses = JSON.parse(localStorage.getItem('myCourses')) || [];
+        let map, polyline, watchId, isTracking = false;
+        let currentPath = [], currentPhotos = [];
+        let savedData = JSON.parse(localStorage.getItem('myFootprints')) || [];
 
-        // 앱 시작 시 실행
+        // 초기화
         window.onload = () => {
             initMap();
-            renderFeed();
+            updateFeed();
         };
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([37.5665, 126.9780], 16);
+            map = L.map('map', { zoomControl: false }).setView([37.5665, 126.9780], 15);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-            polyline = L.polyline([], { color: '#2563eb', weight: 6, lineCap: 'round' }).addTo(map);
+            polyline = L.polyline([], { color: '#2563eb', weight: 6, lineCap: 'round', opacity: 0.8 }).addTo(map);
         }
 
-        // 페이지 전환 함수
-        function navTo(page) {
-            const home = document.getElementById('home-page');
-            const mapPage = document.getElementById('map-page');
-            const nHome = document.getElementById('nav-home');
-            const nMap = document.getElementById('nav-map');
+        // 페이지 전환 함수 (수정 완료)
+        function changePage(target) {
+            const homeP = document.getElementById('home-page');
+            const mapP = document.getElementById('map-page');
+            const navH = document.getElementById('nav-home');
+            const navM = document.getElementById('nav-map');
 
-            if (page === 'home') {
-                home.classList.remove('hidden-page'); home.classList.add('active-page');
-                mapPage.classList.add('hidden-page');
-                nHome.classList.add('active'); nMap.classList.remove('active');
+            if (target === 'home') {
+                homeP.style.display = 'block';
+                mapP.style.display = 'none';
+                navH.className = 'nav-btn active';
+                navM.className = 'nav-btn inactive';
             } else {
-                mapPage.classList.remove('hidden-page'); mapPage.classList.add('active-page');
-                home.classList.add('hidden-page');
-                nMap.classList.add('active'); nHome.classList.remove('active');
-                setTimeout(() => map.invalidateSize(), 300); // 지도 크기 재계산
+                homeP.style.display = 'none';
+                mapP.style.display = 'block';
+                navH.className = 'nav-btn inactive';
+                navM.className = 'nav-btn active';
+                // 지도가 나타날 때 즉시 렌더링 갱신
+                setTimeout(() => { map.invalidateSize(); }, 50);
             }
-        }
-
-        // 피드 렌더링
-        function renderFeed() {
-            const container = document.getElementById('feed-container');
-            if (myCourses.length === 0) {
-                container.innerHTML = `<div class="text-center py-20 text-slate-400 font-medium">기록된 활동이 없습니다.<br>트래킹을 시작해보세요!</div>`;
-                return;
-            }
-            container.innerHTML = myCourses.map((c, i) => `
-                <div class="card" onclick="viewCourse(${i})">
-                    <div class="h-44 relative">
-                        <img src="${c.thumbnail || 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=400'}" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                        <p class="absolute bottom-4 left-5 text-white font-bold text-lg">${c.title}</p>
-                    </div>
-                    <div class="p-4 flex justify-between items-center bg-white">
-                        <span class="font-black text-blue-600 tracking-tight">${c.distance}</span>
-                        <span class="text-[10px] text-slate-400 font-bold">${c.date}</span>
-                    </div>
-                </div>
-            `).join('');
         }
 
         // 트래킹 토글
         function toggleTracking() {
-            const btn = document.getElementById('main-btn');
-            const camBtn = document.getElementById('cam-btn');
-            const badge = document.getElementById('rec-badge');
+            const btn = document.getElementById('track-btn');
+            const camTrigger = document.getElementById('cam-trigger');
+            const status = document.getElementById('rec-status');
 
             if (!isTracking) {
-                isTracking = true; currentPath = []; currentPhotos = []; polyline.setLatLngs([]);
-                btn.innerText = "중지"; btn.classList.replace('bg-blue-600', 'bg-slate-900');
-                camBtn.classList.remove('hidden'); badge.classList.remove('hidden');
-                startGPS();
+                isTracking = true;
+                currentPath = []; currentPhotos = []; polyline.setLatLngs([]);
+                btn.innerText = "기록 중지";
+                btn.className = "flex-1 h-16 bg-slate-900 text-white font-black text-lg rounded-3xl shadow-lg";
+                camTrigger.classList.remove('hidden');
+                status.classList.remove('hidden');
+                startLocationWatch();
             } else {
                 isTracking = false;
-                btn.innerText = "트래킹 시작"; btn.classList.replace('bg-slate-900', 'bg-blue-600');
-                badge.classList.add('hidden');
+                btn.innerText = "트래킹 시작";
+                btn.className = "flex-1 h-16 bg-blue-600 text-white font-black text-lg rounded-3xl shadow-lg";
+                status.classList.add('hidden');
                 navigator.geolocation.clearWatch(watchId);
             }
         }
 
-        function startGPS() {
+        function startLocationWatch() {
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(pos => {
-                    const latlng = [pos.coords.latitude, pos.coords.longitude];
-                    currentPath.push(latlng); polyline.setLatLngs(currentPath); map.panTo(latlng);
-                    document.getElementById('dist-txt').innerText = (currentPath.length * 0.005).toFixed(1) + "km";
+                    const loc = [pos.coords.latitude, pos.coords.longitude];
+                    currentPath.push(loc);
+                    polyline.setLatLngs(currentPath);
+                    map.panTo(loc);
+                    document.getElementById('dist-val').innerText = (currentPath.length * 0.005).toFixed(1) + "km";
                 }, null, { enableHighAccuracy: true });
             }
         }
 
-        // 카메라 촬영 처리
-        document.getElementById('camera-input').addEventListener('change', e => {
+        // 실제 카메라 파일 처리
+        document.getElementById('real-cam').addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = event => {
-                const img = event.target.result;
+                const imgBase64 = event.target.result;
                 const pos = currentPath.length > 0 ? currentPath[currentPath.length - 1] : map.getCenter();
-                L.marker(pos).addTo(map).bindPopup(`<img src="${img}" style="width:100%; border-radius:10px;">`).openPopup();
-                currentPhotos.push({ pos, url: img });
-                document.getElementById('photo-count').innerText = currentPhotos.length;
+                
+                L.marker(pos).addTo(map).bindPopup(`<img src="${imgBase64}" style="width:100%; border-radius:12px;">`).openPopup();
+                currentPhotos.push({ pos, url: imgBase64 });
+                document.getElementById('photo-val').innerText = currentPhotos.length;
             };
             reader.readAsDataURL(file);
         });
 
-        // 저장 기능
-        function saveCourse() {
-            if (currentPath.length < 2) return alert("기록이 없습니다.");
-            const title = prompt("오늘의 코스 이름은?", "즐거운 산책");
-            if (!title) return;
+        // 저장 로직
+        function saveCurrentCourse() {
+            if (currentPath.length < 2) return alert("기록된 경로가 없습니다.");
+            const name = prompt("이 산책 코스의 이름은?", "나의 멋진 산책");
+            if (!name) return;
 
-            const newCourse = {
-                title,
-                distance: document.getElementById('dist-txt').innerText,
+            const courseObj = {
+                id: Date.now(),
+                title: name,
+                distance: document.getElementById('dist-val').innerText,
                 path: currentPath,
                 photos: currentPhotos,
                 thumbnail: currentPhotos.length > 0 ? currentPhotos[0].url : null,
                 date: new Date().toLocaleDateString()
             };
 
-            myCourses.unshift(newCourse);
-            localStorage.setItem('myCourses', JSON.stringify(myCourses));
-            renderFeed();
-            alert("코스가 저장되었습니다!");
-            navTo('home');
+            savedData.unshift(courseObj);
+            localStorage.setItem('myFootprints', JSON.stringify(savedData));
+            updateFeed();
+            alert("활동이 저장되었습니다!");
+            changePage('home');
         }
 
-        // 저장된 코스 보기
-        function viewCourse(idx) {
-            const c = myCourses[idx];
-            navTo('map');
-            polyline.setLatLngs(c.path);
-            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
-            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-            c.photos.forEach(p => L.marker(p.pos).addTo(map).bindPopup(`<img src="${p.url}" style="width:100%">`));
+        // 피드 업데이트
+        function updateFeed() {
+            const container = document.getElementById('feed-list');
+            if (savedData.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">아직 기록이 없습니다.<br>Track 탭에서 시작해보세요!</div>`;
+                return;
+            }
+            container.innerHTML = savedData.map((item, index) => `
+                <div class="course-card active:scale-[0.98] transition" onclick="loadCourseToMap(${index})">
+                    <div class="h-44 relative bg-slate-100">
+                        <img src="${item.thumbnail || 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=400'}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                        <p class="absolute bottom-4 left-5 text-white font-extrabold text-xl">${item.title}</p>
+                    </div>
+                    <div class="p-5 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-blue-600 font-black text-lg">${item.distance}</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${item.date}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 저장된 데이터 지도로 불러오기
+        function loadCourseToMap(index) {
+            const item = savedData[index];
+            changePage('map');
+            setTimeout(() => {
+                polyline.setLatLngs(item.path);
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                // 기존 마커 제거 후 새 마커 추가
+                map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+                item.photos.forEach(p => {
+                    L.marker(p.pos).addTo(map).bindPopup(`<img src="${p.url}" style="width:100%">`);
+                });
+            }, 100);
         }
     </script>
 </body>
