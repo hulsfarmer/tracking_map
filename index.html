@@ -3,205 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Footprints Pro</title>
+    <title>Footprints Stats</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 1. 동적 뷰포트 높이 설정 */
         :root { --vh: 100dvh; }
-        body { height: var(--vh); margin: 0; padding: 0; overflow: hidden; background: #fff; }
-        
-        .safe-container {
-            display: flex;
-            flex-direction: column;
-            height: var(--vh);
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        /* 2. 각 페이지 영역 (탭 높이 85px만큼 바닥 여백 확보) */
-        .page { 
-            display: none; 
-            flex: 1; 
-            height: calc(var(--vh) - 85px); 
-            overflow-y: auto; 
-            padding-bottom: 100px; /* 탭에 가려지지 않게 여유분 추가 */
-        }
-        
+        body { height: var(--vh); margin: 0; overflow: hidden; background: #fff; }
+        .app-layout { display: flex; flex-direction: column; height: var(--vh); max-width: 500px; margin: 0 auto; }
+        .page { display: none; flex: 1; height: calc(var(--vh) - 85px); overflow-y: auto; }
         #map { width: 100%; height: 100%; z-index: 1; }
-
-        /* 3. 하단 탭 (최상위 고정) */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 85px;
-            background: white;
-            border-top: 1px solid #f1f1f1;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 9999; /* 모든 요소보다 위에 위치 */
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-        }
-
-        .nav-item { flex: 1; text-align: center; color: #94a3b8; font-size: 11px; font-weight: 800; border: none; background: none; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 85px; background: white; border-top: 1px solid #f1f1f1; display: flex; z-index: 9999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; text-align: center; color: #94a3b8; font-size: 11px; font-weight: 800; }
         .nav-item.active { color: #2563eb; }
-
-        /* 4. 트래킹 UI 패널 */
-        .track-panel {
-            position: absolute;
-            bottom: 100px; /* 탭 높이 85px 보다 높게 설정 */
-            left: 15px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 24px;
-            z-index: 1000;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        
+        /* 상세 정보 레이어 스타일 */
+        .info-panel {
+            position: absolute; bottom: 100px; left: 15px; right: 15px;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            padding: 24px; border-radius: 28px; z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
 
-    <div class="safe-container">
-        <header class="h-14 flex justify-between items-center px-6 border-b bg-white shrink-0">
-            <h1 class="text-xl font-black italic tracking-tighter">FOOTPRINTS<span class="text-blue-600">.</span></h1>
-            <div id="rec-dot" class="hidden flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded-full">
-                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            </div>
-        </header>
+<div class="app-layout">
+    <header class="h-14 flex justify-between items-center px-6 border-b bg-white shrink-0">
+        <h1 class="text-xl font-black italic italic tracking-tighter">FOOTPRINTS<span class="text-blue-600">.</span></h1>
+    </header>
 
-        <main class="flex-1 relative">
-            <section id="home-page" class="page p-6" style="display: block;">
-                <h2 class="text-2xl font-black mb-6">나의 활동</h2>
-                <div id="feed-list" class="space-y-6"></div>
-            </section>
+    <main class="flex-1 relative">
+        <section id="home-page" class="page p-6" style="display: block;">
+            <h2 class="text-2xl font-black mb-6">나의 활동</h2>
+            <div id="feed-list" class="space-y-4"></div>
+        </section>
 
-            <section id="map-page" class="page" style="padding:0;">
-                <div id="map"></div>
-                <div class="track-panel">
-                    <div class="flex justify-around mb-4">
-                        <div class="text-center">
-                            <p class="text-[10px] text-slate-400 font-bold uppercase">Dist</p>
-                            <p id="dist-val" class="text-xl font-black text-slate-800">0.0km</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-[10px] text-slate-400 font-bold uppercase">Photos</p>
-                            <p id="photo-val" class="text-xl font-black text-slate-800">0</p>
-                        </div>
+        <section id="map-page" class="page" style="padding:0;">
+            <div id="map"></div>
+            
+            <div class="info-panel">
+                <div id="status-title" class="text-[10px] font-black text-blue-600 uppercase mb-3 tracking-widest text-center">Tracking Mode</div>
+                <div class="flex justify-around mb-6 text-center">
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Distance</p>
+                        <p id="dist-val" class="text-2xl font-black">0.0km</p>
                     </div>
-                    <div class="flex gap-2">
-                        <label id="cam-box" class="hidden w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center cursor-pointer active:bg-slate-200">
-                            📷
-                            <input type="file" id="real-cam" accept="image/*" capture="camera" class="hidden">
-                        </label>
-                        <button id="track-btn" onclick="toggleTracking()" class="flex-1 h-14 bg-blue-600 text-white font-black rounded-2xl">트래킹 시작</button>
-                        <button onclick="saveCourse()" class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">💾</button>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Time</p>
+                        <p id="time-val" class="text-2xl font-black">00:00</p>
+                    </div>
+                    <div id="date-box" class="hidden">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Date</p>
+                        <p id="date-val" class="text-xl font-black text-slate-700">--/--</p>
                     </div>
                 </div>
-            </section>
-        </main>
+                
+                <div class="flex gap-2">
+                    <button id="main-action-btn" onclick="toggleTracking()" class="flex-1 h-14 bg-blue-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition">트래킹 시작</button>
+                    <button id="save-btn" onclick="saveCourse()" class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">💾</button>
+                    <button id="close-btn" onclick="exitViewMode()" class="hidden w-14 h-14 bg-slate-900 text-white rounded-2xl font-bold">✕</button>
+                </div>
+            </div>
+        </section>
+    </main>
 
-        <nav class="bottom-nav">
-            <button onclick="go('home')" id="btn-home" class="nav-item active">EXPLORE</button>
-            <button onclick="go('map')" id="btn-map" class="nav-item">TRACK</button>
-        </nav>
-    </div>
+    <nav class="bottom-nav">
+        <button onclick="go('home')" id="btn-home" class="nav-item active">EXPLORE</button>
+        <button onclick="go('map')" id="btn-map" class="nav-item">TRACK</button>
+    </nav>
+</div>
 
-    <script>
-        let map, polyline, watchId, isTracking = false;
-        let pathData = [], photoData = [];
-        let db = JSON.parse(localStorage.getItem('myFootprints')) || [];
+<script>
+    let map, polyline, watchId, isTracking = false, startTime, timerInterval;
+    let pathData = [];
+    let db = JSON.parse(localStorage.getItem('myFootprints')) || [];
 
-        window.onload = () => { initMap(); renderFeed(); };
+    window.onload = () => { initMap(); renderFeed(); };
 
-        function initMap() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([37.5665, 126.9780], 15);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-            polyline = L.polyline([], { color: '#2563eb', weight: 6 }).addTo(map);
+    function initMap() {
+        map = L.map('map', { zoomControl: false, attributionControl: false }).setView([37.5665, 126.9780], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+        polyline = L.polyline([], { color: '#2563eb', weight: 6, lineCap: 'round' }).addTo(map);
+    }
+
+    function go(id) {
+        document.getElementById('home-page').style.display = id === 'home' ? 'block' : 'none';
+        document.getElementById('map-page').style.display = id === 'map' ? 'block' : 'none';
+        document.getElementById('btn-home').classList.toggle('active', id === 'home');
+        document.getElementById('btn-map').classList.toggle('active', id === 'map');
+        if(id === 'map') setTimeout(() => map.invalidateSize(), 200);
+    }
+
+    function toggleTracking() {
+        const btn = document.getElementById('main-action-btn');
+        if (!isTracking) {
+            isTracking = true; pathData = []; polyline.setLatLngs([]);
+            startTime = Date.now();
+            btn.innerText = "중지"; btn.classList.replace('bg-blue-600', 'bg-red-500');
+            timerInterval = setInterval(updateTimer, 1000);
+            startGPS();
+        } else {
+            isTracking = false;
+            btn.innerText = "트래킹 시작"; btn.classList.replace('bg-red-500', 'bg-blue-600');
+            clearInterval(timerInterval);
+            navigator.geolocation.clearWatch(watchId);
         }
+    }
 
-        function go(id) {
-            document.getElementById('home-page').style.display = id === 'home' ? 'block' : 'none';
-            document.getElementById('map-page').style.display = id === 'map' ? 'block' : 'none';
-            document.getElementById('btn-home').classList.toggle('active', id === 'home');
-            document.getElementById('btn-map').classList.toggle('active', id === 'map');
-            if(id === 'map') setTimeout(() => { map.invalidateSize(); }, 200);
-        }
+    function updateTimer() {
+        const diff = Math.floor((Date.now() - startTime) / 1000);
+        const m = String(Math.floor(diff / 60)).padStart(2, '0');
+        const s = String(diff % 60).padStart(2, '0');
+        document.getElementById('time-val').innerText = `${m}:${s}`;
+    }
 
-        function toggleTracking() {
-            const btn = document.getElementById('track-btn');
-            const cam = document.getElementById('cam-box');
-            if (!isTracking) {
-                isTracking = true; pathData = []; photoData = []; polyline.setLatLngs([]);
-                btn.innerText = "중지"; btn.classList.replace('bg-blue-600', 'bg-slate-900');
-                cam.classList.remove('hidden'); document.getElementById('rec-dot').classList.remove('hidden');
-                startGPS();
-            } else {
-                isTracking = false;
-                btn.innerText = "트래킹 시작"; btn.classList.replace('bg-slate-900', 'bg-blue-600');
-                document.getElementById('rec-dot').classList.add('hidden');
-                navigator.geolocation.clearWatch(watchId);
-            }
-        }
+    function startGPS() {
+        watchId = navigator.geolocation.watchPosition(pos => {
+            const loc = [pos.coords.latitude, pos.coords.longitude];
+            pathData.push(loc); polyline.setLatLngs(pathData); map.panTo(loc);
+            document.getElementById('dist-val').innerText = (pathData.length * 0.005).toFixed(1) + "km";
+        }, null, { enableHighAccuracy: true });
+    }
 
-        function startGPS() {
-            watchId = navigator.geolocation.watchPosition(pos => {
-                const loc = [pos.coords.latitude, pos.coords.longitude];
-                pathData.push(loc); polyline.setLatLngs(pathData); map.panTo(loc);
-                document.getElementById('dist-val').innerText = (pathData.length * 0.005).toFixed(1) + "km";
-            }, null, { enableHighAccuracy: true });
-        }
+    function saveCourse() {
+        if (pathData.length < 2) return alert("기록이 없습니다.");
+        const title = prompt("코스 이름", "오늘의 산책");
+        if (!title) return;
+        
+        const newRecord = {
+            title,
+            dist: document.getElementById('dist-val').innerText,
+            time: document.getElementById('time-val').innerText,
+            path: pathData,
+            date: new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        };
+        db.unshift(newRecord);
+        localStorage.setItem('myFootprints', JSON.stringify(db));
+        renderFeed();
+        alert("저장 성공!"); go('home');
+        resetUI();
+    }
 
-        document.getElementById('real-cam').addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = ev => {
-                const img = ev.target.result;
-                const pos = pathData.length > 0 ? pathData[pathData.length - 1] : map.getCenter();
-                L.marker(pos).addTo(map).bindPopup(`<img src="${img}" style="width:100%; border-radius:10px;">`).openPopup();
-                photoData.push({ pos, url: img });
-                document.getElementById('photo-val').innerText = photoData.length;
-            };
-            reader.readAsDataURL(file);
+    function renderFeed() {
+        const container = document.getElementById('feed-list');
+        container.innerHTML = db.length === 0 ? '<p class="text-center py-10 text-slate-300">활동 기록이 없습니다.</p>' : '';
+        db.forEach((item, i) => {
+            const card = document.createElement('div');
+            card.className = "bg-white p-5 rounded-3xl border border-slate-100 shadow-sm active:bg-slate-50 transition";
+            card.onclick = () => viewRecord(i);
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-slate-400 font-bold mb-1">${item.date}</p>
+                        <p class="font-black text-lg text-slate-800">${item.title}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-blue-600 font-black text-lg">${item.dist}</p>
+                        <p class="text-[10px] font-bold text-slate-400">${item.time}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
         });
+    }
 
-        function saveCourse() {
-            if (pathData.length < 2) return alert("기록이 없습니다.");
-            const title = prompt("코스 이름", "오늘의 산책");
-            if (!title) return;
-            db.unshift({ title, dist: document.getElementById('dist-val').innerText, path: pathData, photos: photoData, thumb: photoData.length > 0 ? photoData[0].url : null, date: new Date().toLocaleDateString() });
-            localStorage.setItem('myFootprints', JSON.stringify(db));
-            renderFeed();
-            alert("저장 성공!"); go('home');
-        }
+    // 기록 상세보기 모드
+    function viewRecord(index) {
+        const item = db[index];
+        go('map');
+        
+        // UI 변경 (조회 모드)
+        document.getElementById('status-title').innerText = "History View";
+        document.getElementById('dist-val').innerText = item.dist;
+        document.getElementById('time-val').innerText = item.time;
+        document.getElementById('date-val').innerText = item.date.split(',')[0];
+        document.getElementById('date-box').classList.remove('hidden');
+        document.getElementById('main-action-btn').classList.add('hidden');
+        document.getElementById('save-btn').classList.add('hidden');
+        document.getElementById('close-btn').classList.remove('hidden');
 
-        function renderFeed() {
-            const container = document.getElementById('feed-list');
-            container.innerHTML = db.length === 0 ? '<p class="text-center py-20 text-slate-300">활동이 없습니다.</p>' : '';
-            db.forEach((item, i) => {
-                const card = document.createElement('div');
-                card.className = "bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm";
-                card.onclick = () => {
-                    go('map');
-                    setTimeout(() => {
-                        polyline.setLatLngs(item.path);
-                        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
-                        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-                        item.photos.forEach(p => L.marker(p.pos).addTo(map).bindPopup(`<img src="${p.url}" style="width:100%">`));
-                    }, 300);
-                };
-                card.innerHTML = `<div class="h-40 bg-slate-100"><img src="${item.thumb || ''}" class="w-full h-full object-cover"></div><div class="p-5 flex justify-between items-center"><div><p class="font-bold">${item.title}</p><p class="text-blue-600 font-black">${item.dist}</p></div><span class="text-[10px] text-slate-400 font-bold uppercase">${item.date}</span></div>`;
-                container.appendChild(card);
-            });
-        }
-    </script>
+        setTimeout(() => {
+            polyline.setLatLngs(item.path);
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        }, 300);
+    }
+
+    function exitViewMode() {
+        resetUI();
+        go('home');
+    }
+
+    function resetUI() {
+        document.getElementById('status-title').innerText = "Tracking Mode";
+        document.getElementById('dist-val').innerText = "0.0km";
+        document.getElementById('time-val').innerText = "00:00";
+        document.getElementById('date-box').classList.add('hidden');
+        document.getElementById('main-action-btn').classList.remove('hidden');
+        document.getElementById('save-btn').classList.remove('hidden');
+        document.getElementById('close-btn').classList.add('hidden');
+        polyline.setLatLngs([]);
+    }
+</script>
 </body>
 </html>
