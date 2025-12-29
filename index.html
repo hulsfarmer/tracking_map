@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Footprints - 소셜 트래킹 앱</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        #map { height: calc(100vh - 120px); width: 100%; }
+        .active-tab { color: #2563eb; border-top: 2px solid #2563eb; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 flex justify-center">
+
+    <div class="w-full max-w-md bg-white h-screen shadow-2xl flex flex-col relative overflow-hidden">
+        
+        <header class="p-4 bg-white border-b flex justify-between items-center shadow-sm z-[1001]">
+            <h1 class="text-xl font-bold text-blue-600">Footprints</h1>
+            <div id="status" class="text-xs font-bold text-gray-400">대기 중</div>
+        </header>
+
+        <main id="content" class="flex-1 overflow-y-auto">
+            <div id="home-view" class="p-4 space-y-4">
+                <h2 class="font-bold text-gray-700">인기 트래킹 코스</h2>
+                
+                <div onclick="showDetail('한강')" class="bg-white rounded-xl shadow border overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=400" class="w-full h-32 object-cover">
+                    <div class="p-3">
+                        <p class="text-xs text-blue-500 font-bold">김산책</p>
+                        <h3 class="font-medium">한강 노을길 코스 (4.2km)</h3>
+                    </div>
+                </div>
+
+                <div onclick="showDetail('남산')" class="bg-white rounded-xl shadow border overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400" class="w-full h-32 object-cover">
+                    <div class="p-3">
+                        <p class="text-xs text-blue-500 font-bold">이걷기</p>
+                        <h3 class="font-medium">남산 둘레길 정복 (3.8km)</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div id="map-view" class="hidden h-full relative">
+                <div id="map"></div>
+                <div id="tracking-controls" class="absolute bottom-6 left-0 right-0 px-6 flex justify-between items-center z-[1000]">
+                    <button onclick="addPhotoMarker()" class="bg-white p-4 rounded-full shadow-xl border"><img src="https://cdn-icons-png.flaticon.com/512/685/685655.png" class="w-6 h-6"></button>
+                    <button id="toggleBtn" onclick="toggleTracking()" class="bg-blue-600 p-5 rounded-full shadow-2xl text-white font-bold text-xl">▶</button>
+                    <button onclick="alert('경로가 공유되었습니다!')" class="bg-white p-4 rounded-full shadow-xl border"><img src="https://cdn-icons-png.flaticon.com/512/1358/1358023.png" class="w-6 h-6"></button>
+                </div>
+            </div>
+        </main>
+
+        <nav class="bg-white border-t flex justify-around items-center p-3 z-[1001]">
+            <button onclick="changeTab('home')" id="home-tab" class="flex flex-col items-center flex-1 active-tab">
+                <span class="text-[10px] font-bold">홈</span>
+            </button>
+            <button onclick="changeTab('map')" id="map-tab" class="flex flex-col items-center flex-1 text-gray-400">
+                <span class="text-[10px] font-bold">트래킹 시작</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        let map;
+        let trackPath = [];
+        let polyline;
+        let isTracking = false;
+        let watchId;
+
+        // 지도 초기화
+        function initMap() {
+            map = L.map('map').setView([37.5665, 126.9780], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            polyline = L.polyline([], {color: '#2563eb', weight: 5}).addTo(map);
+        }
+
+        // 화면 탭 전환
+        function changeTab(tab) {
+            document.getElementById('home-view').classList.add('hidden');
+            document.getElementById('map-view').classList.add('hidden');
+            document.getElementById('home-tab').classList.remove('active-tab');
+            document.getElementById('map-tab').classList.remove('active-tab');
+
+            if(tab === 'home') {
+                document.getElementById('home-view').classList.remove('hidden');
+                document.getElementById('home-tab').classList.add('active-tab');
+            } else {
+                document.getElementById('map-view').classList.remove('hidden');
+                document.getElementById('map-tab').classList.add('active-tab');
+                if(!map) initMap();
+                map.invalidateSize(); // 지도 리사이즈 처리
+            }
+        }
+
+        // 트래킹 시작/종료
+        function toggleTracking() {
+            const btn = document.getElementById('toggleBtn');
+            const status = document.getElementById('status');
+            
+            if (!isTracking) {
+                isTracking = true;
+                btn.innerText = "■";
+                btn.classList.replace('bg-blue-600', 'bg-red-600');
+                status.innerText = "기록 중...";
+                status.classList.add('text-red-500');
+
+                // 위치 추적 시작
+                if (navigator.geolocation) {
+                    watchId = navigator.geolocation.watchPosition(pos => {
+                        const newPos = [pos.coords.latitude, pos.coords.longitude];
+                        trackPath.push(newPos);
+                        polyline.setLatLngs(trackPath);
+                        map.setView(newPos);
+                    }, null, { enableHighAccuracy: true });
+                }
+            } else {
+                isTracking = false;
+                btn.innerText = "▶";
+                btn.classList.replace('bg-red-600', 'bg-blue-600');
+                status.innerText = "완료됨";
+                navigator.geolocation.clearWatch(watchId);
+            }
+        }
+
+        // 사진 마커 추가
+        function addPhotoMarker() {
+            if (trackPath.length === 0) {
+                alert("위치 정보가 잡히지 않았습니다.");
+                return;
+            }
+            const lastPos = trackPath[trackPath.length - 1];
+            const marker = L.marker(lastPos).addTo(map);
+            const imgUrl = "https://picsum.photos/seed/" + Math.random() + "/200/150";
+            marker.bindPopup(`<img src="${imgUrl}" class="rounded shadow-sm"><p class='text-center mt-2'>현재 위치 기록!</p>`).openPopup();
+        }
+
+        // 상세 코스 보기 (시뮬레이션)
+        function showDetail(name) {
+            changeTab('map');
+            alert(name + " 코스를 불러왔습니다.");
+            // 실제 구현 시 여기서 해당 코스 데이터를 지도로 끕니다.
+        }
+    </script>
+</body>
+</html>
