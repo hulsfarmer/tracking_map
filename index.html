@@ -3,181 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Footprints Pro</title>
+    <title>Footprints Pro - Full Version</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #000; }
-        #map { height: 100vh; width: 100%; z-index: 1; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.3); }
-        .shutter-flash { position: fixed; inset: 0; background: white; z-index: 9999; display: none; }
-        
-        /* 지도 위 팝업 디자인 커스텀 */
-        .leaflet-popup-content-wrapper { border-radius: 20px; overflow: hidden; padding: 0; }
-        .leaflet-popup-content { margin: 0 !important; width: 250px !important; }
-        
-        /* 펄스 애니메이션 (녹화 중) */
-        .pulse { animation: pulse-red 1.5s infinite; }
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        body { font-family: -apple-system, sans-serif; background-color: #f8fafc; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+        .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.4); }
+        .nav-active { color: #2563eb; font-weight: 800; }
+        .leaflet-popup-content-wrapper { border-radius: 16px; overflow: hidden; padding: 0; }
+        .leaflet-popup-content { margin: 0 !important; width: 200px !important; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body>
+<body class="flex justify-center items-center h-screen">
 
-    <div id="shutter" class="shutter-flash"></div>
-
-    <div class="max-w-md mx-auto h-screen relative bg-white overflow-hidden shadow-2xl">
+    <div class="w-full max-w-md bg-white h-screen shadow-2xl flex flex-col relative overflow-hidden md:rounded-[3rem] md:h-[850px] md:border-[8px] md:border-slate-900">
         
-        <div id="map"></div>
-
-        <div class="absolute top-6 left-0 right-0 px-6 z-[1000] flex justify-between items-start pointer-events-none">
-            <div class="glass px-5 py-2.5 rounded-2xl shadow-xl pointer-events-auto">
+        <header class="absolute top-0 w-full p-6 flex justify-between items-center z-[1001] pointer-events-none">
+            <div class="glass px-5 py-2 rounded-2xl pointer-events-auto">
                 <h1 class="text-xl font-black text-slate-900 tracking-tighter italic">FOOTPRINTS<span class="text-blue-600">.</span></h1>
             </div>
-            
-            <div id="recording-badge" class="hidden glass px-3 py-2 rounded-2xl shadow-xl pointer-events-auto flex items-center gap-2">
-                <div class="w-2 h-2 bg-red-500 rounded-full pulse"></div>
-                <span class="text-[10px] font-black text-slate-800 tracking-widest">LIVE REC</span>
+            <div id="rec-badge" class="hidden glass px-3 py-2 rounded-2xl pointer-events-auto flex items-center gap-2">
+                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span class="text-[10px] font-bold text-red-600">REC</span>
             </div>
-        </div>
+        </header>
 
-        <div class="absolute bottom-10 left-0 right-0 px-8 z-[1000] pointer-events-none">
+        <main class="flex-1 relative overflow-hidden">
             
-            <div id="stats-panel" class="hidden glass mb-6 p-5 rounded-[2rem] shadow-2xl flex justify-around items-center pointer-events-auto border-white/50">
-                <div class="text-center">
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Distance</p>
-                    <p id="dist-display" class="text-2xl font-black text-slate-900">0.0<span class="text-xs ml-0.5">km</span></p>
-                </div>
-                <div class="w-px h-8 bg-slate-200"></div>
-                <div class="text-center">
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Photos</p>
-                    <p id="photo-count" class="text-2xl font-black text-slate-900">0</p>
+            <div id="home-view" class="h-full overflow-y-auto bg-slate-50 p-6 pt-24 pb-32 hide-scroll">
+                <h2 class="text-2xl font-extrabold text-slate-900 mb-6">나의 활동 피드</h2>
+                <div id="feed-container" class="grid gap-6 text-center py-10">
+                    <p class="text-slate-400">아직 저장된 활동이 없습니다.</p>
                 </div>
             </div>
 
-            <div class="flex justify-between items-center pointer-events-auto gap-4">
-                <label for="real-camera" id="cam-btn" class="hidden w-16 h-16 glass rounded-3xl flex items-center justify-center shadow-xl border-white active:scale-90 transition-transform">
-                    <svg class="w-7 h-7 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    <input type="file" id="real-camera" accept="image/*" capture="camera" class="hidden">
-                </label>
-
-                <button id="track-toggle" onclick="toggleTracking()" class="flex-1 h-16 bg-blue-600 rounded-3xl text-white font-black text-lg shadow-[0_15px_30px_rgba(37,99,235,0.3)] active:scale-95 transition-all">
-                    트래킹 시작하기
-                </button>
-
-                <button onclick="saveAndReset()" class="w-16 h-16 glass rounded-3xl flex items-center justify-center shadow-xl active:scale-90 transition-transform">
-                    <svg class="w-7 h-7 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                </button>
+            <div id="map-view" class="hidden h-full">
+                <div id="map"></div>
+                
+                <div id="tracking-card" class="absolute bottom-28 left-6 right-6 glass p-6 rounded-[2.5rem] z-[1000] shadow-xl">
+                    <div class="flex justify-around items-center mb-6">
+                        <div class="text-center">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Distance</p>
+                            <p id="dist-val" class="text-2xl font-black text-slate-900">0.0km</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Photos</p>
+                            <p id="photo-count" class="text-2xl font-black text-slate-900">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center gap-4">
+                        <label for="camera-input" id="cam-btn" class="hidden w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center border active:scale-90 transition-all">
+                            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <input type="file" id="camera-input" accept="image/*" capture="camera" class="hidden">
+                        </label>
+                        <button id="main-btn" onclick="toggleTracking()" class="flex-1 h-14 rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-lg active:scale-95 transition-all">시작하기</button>
+                        <button onclick="saveCourse()" class="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center border active:scale-90 transition-all">
+                            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
+
+        <nav class="absolute bottom-0 w-full h-20 glass border-t flex justify-around items-center px-10 z-[1001]">
+            <button onclick="changeTab('home')" id="tab-home" class="nav-active flex flex-col items-center">
+                <span class="text-[10px] font-bold">EXPLORE</span>
+            </button>
+            <button onclick="changeTab('map')" id="tab-map" class="text-slate-300 flex flex-col items-center">
+                <span class="text-[10px] font-bold">TRACK</span>
+            </button>
+        </nav>
     </div>
 
     <script>
-        let map, polyline, watchId;
-        let isTracking = false;
-        let trackData = [];
-        let photoMarkers = [];
+        let map, polyline, watchId, isTracking = false, currentPath = [], currentPhotos = [];
+        let sharedCourses = JSON.parse(localStorage.getItem('myCourses')) || [];
 
-        // 1. 초기 지도 설정
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([37.5665, 126.9780], 16);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '©OpenStreetMap'
-            }).addTo(map);
-            
-            polyline = L.polyline([], {
-                color: '#2563eb',
-                weight: 8,
-                opacity: 0.8,
-                lineCap: 'round'
-            }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+            polyline = L.polyline([], { color: '#2563eb', weight: 6 }).addTo(map);
+            renderFeed();
         }
 
-        // 2. 트래킹 토글 기능
+        function renderFeed() {
+            const container = document.getElementById('feed-container');
+            if (sharedCourses.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 py-10">아직 저장된 활동이 없습니다.</p>`;
+                return;
+            }
+            container.innerHTML = sharedCourses.map((c, i) => `
+                <div class="bg-white rounded-[2rem] overflow-hidden shadow-md border border-slate-100" onclick="viewCourse(${i})">
+                    <div class="h-40 bg-slate-200 overflow-hidden relative">
+                        <img src="${c.thumbnail || 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=400'}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                        <p class="absolute bottom-4 left-5 text-white font-bold text-lg">${c.title}</p>
+                    </div>
+                    <div class="p-4 flex justify-between items-center">
+                        <span class="font-black text-blue-600">${c.distance}</span>
+                        <span class="text-xs text-slate-400">${c.date}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function changeTab(tab) {
+            document.getElementById('home-view').classList.toggle('hidden', tab !== 'home');
+            document.getElementById('map-view').classList.toggle('hidden', tab !== 'map');
+            document.getElementById('tab-home').classList.toggle('nav-active', tab === 'home');
+            document.getElementById('tab-map').classList.toggle('nav-active', tab === 'map');
+            if(tab === 'map') setTimeout(() => map.invalidateSize(), 200);
+        }
+
         function toggleTracking() {
-            const btn = document.getElementById('track-toggle');
+            const btn = document.getElementById('main-btn');
             const camBtn = document.getElementById('cam-btn');
-            const stats = document.getElementById('stats-panel');
-            const badge = document.getElementById('recording-badge');
+            const badge = document.getElementById('rec-badge');
 
             if (!isTracking) {
-                // 시작
                 isTracking = true;
-                btn.innerText = "기록 중지";
-                btn.classList.replace('bg-blue-600', 'bg-slate-900');
-                camBtn.classList.remove('hidden');
-                stats.classList.remove('hidden');
-                badge.classList.remove('hidden');
+                currentPath = []; currentPhotos = []; polyline.setLatLngs([]);
+                btn.innerText = "중지"; btn.classList.replace('bg-blue-600', 'bg-slate-900');
+                camBtn.classList.remove('hidden'); badge.classList.remove('hidden');
                 startGPS();
             } else {
-                // 중지
                 isTracking = false;
-                btn.innerText = "트래킹 시작하기";
-                btn.classList.replace('bg-slate-900', 'bg-blue-600');
+                btn.innerText = "시작하기"; btn.classList.replace('bg-slate-900', 'bg-blue-600');
                 badge.classList.add('hidden');
-                if (watchId) navigator.geolocation.clearWatch(watchId);
+                navigator.geolocation.clearWatch(watchId);
             }
         }
 
-        // 3. 실제 GPS 위치 추적
         function startGPS() {
-            if ("geolocation" in navigator) {
+            if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(pos => {
                     const latlng = [pos.coords.latitude, pos.coords.longitude];
-                    trackData.push(latlng);
-                    polyline.setLatLngs(trackData);
-                    map.panTo(latlng);
-                    
-                    // 거리 계산 (간단 버전)
-                    const dist = (trackData.length * 0.005).toFixed(1);
-                    document.getElementById('dist-display').innerHTML = `${dist}<span class="text-xs ml-0.5">km</span>`;
-                }, err => {
-                    console.error("GPS Error:", err);
-                    alert("GPS 권한을 허용해주세요.");
-                }, { enableHighAccuracy: true });
+                    currentPath.push(latlng); polyline.setLatLngs(currentPath); map.panTo(latlng);
+                    document.getElementById('dist-val').innerText = (currentPath.length * 0.005).toFixed(1) + "km";
+                }, null, { enableHighAccuracy: true });
             }
         }
 
-        // 4. 실제 카메라 사진 처리
-        document.getElementById('real-camera').addEventListener('change', function(e) {
+        document.getElementById('camera-input').addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
-
-            // 셔터 애니메이션
-            const shutter = document.getElementById('shutter');
-            shutter.style.display = 'block';
-            setTimeout(() => shutter.style.display = 'none', 150);
-
             const reader = new FileReader();
-            reader.onload = function(event) {
-                const imageData = event.target.result;
-                const currentPos = trackData.length > 0 ? trackData[trackData.length - 1] : map.getCenter();
-                
-                // 지도에 마커 추가
-                const marker = L.marker(currentPos).addTo(map);
-                marker.bindPopup(`
-                    <div style="padding: 10px;">
-                        <img src="${imageData}" style="width: 100%; border-radius: 12px; margin-bottom: 8px;">
-                        <p style="font-size: 11px; color: #64748b; text-align: center; font-weight: bold;">방금 기록한 순간</p>
-                    </div>
-                `).openPopup();
-                
-                photoMarkers.push({ pos: currentPos, url: imageData });
-                document.getElementById('photo-count').innerText = photoMarkers.length;
+            reader.onload = event => {
+                const img = event.target.result;
+                const pos = currentPath.length > 0 ? currentPath[currentPath.length - 1] : map.getCenter();
+                L.marker(pos).addTo(map).bindPopup(`<img src="${img}" class="w-full">`).openPopup();
+                currentPhotos.push({ pos, url: img });
+                document.getElementById('photo-count').innerText = currentPhotos.length;
             };
             reader.readAsDataURL(file);
         });
 
-        // 5. 저장 및 리셋
-        function saveAndReset() {
-            if (trackData.length < 2) return alert("기록된 경로가 없습니다.");
-            alert(photoMarkers.length + "장의 사진과 함께 경로가 저장되었습니다! (데모)");
-            location.reload();
+        function saveCourse() {
+            if (currentPath.length < 2) return alert("기록이 없습니다.");
+            const title = prompt("코스 이름을 입력하세요", "오늘의 산책");
+            if (!title) return;
+
+            const newCourse = {
+                title,
+                distance: document.getElementById('dist-val').innerText,
+                path: currentPath,
+                photos: currentPhotos,
+                thumbnail: currentPhotos.length > 0 ? currentPhotos[0].url : null,
+                date: new Date().toLocaleDateString()
+            };
+
+            sharedCourses.unshift(newCourse);
+            localStorage.setItem('myCourses', JSON.stringify(sharedCourses));
+            renderFeed();
+            alert("저장되었습니다!");
+            changeTab('home');
+        }
+
+        function viewCourse(index) {
+            const c = sharedCourses[index];
+            changeTab('map');
+            polyline.setLatLngs(c.path);
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+            c.photos.forEach(p => L.marker(p.pos).addTo(map).bindPopup(`<img src="${p.url}">`));
         }
 
         window.onload = initMap;
