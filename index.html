@@ -2,115 +2,113 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Footprints Pro Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Footprints Responsive</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #f8fafc; margin: 0; overflow: hidden; height: 100vh; }
-        .app-container { width: 100%; max-width: 450px; height: 100vh; background: white; margin: 0 auto; position: relative; display: flex; flex-direction: column; }
-        
-        /* 헤더 상단 고정 */
-        header { position: absolute; top: 0; width: 100%; height: 64px; z-index: 5000; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid #eee; }
-        
-        /* 메인 콘텐츠 영역 (상하단 여백 확보) */
-        .content-area { flex: 1; position: relative; width: 100%; height: 100%; margin-top: 0; }
-        #home-page, #map-page { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
-        
-        /* 지도가 탭 위로 올라오지 못하게 설정 */
-        #map { width: 100%; height: 100%; z-index: 10; }
+        /* 핵심: dvh 단위를 사용하여 모바일 브라우저 툴바 높이를 정확히 계산 */
+        :root { --app-height: 100dvh; }
+        body { height: var(--app-height); margin: 0; overflow: hidden; background: #000; }
 
-        /* 하단 네비게이션 - 최상위 레이어 설정 */
+        .app-layout { 
+            display: flex; 
+            flex-direction: column; 
+            height: var(--app-height); 
+            max-width: 450px; 
+            margin: 0 auto; 
+            background: white; 
+            position: relative;
+        }
+
+        /* 메인 콘텐츠가 헤더와 내비 사이를 가득 채우게 설정 */
+        main { flex: 1; position: relative; overflow: hidden; }
+
+        .page { position: absolute; inset: 0; width: 100%; height: 100%; display: none; overflow-y: auto; }
+        #map { width: 100%; height: 100%; }
+
+        /* 하단 탭: 절대 가려지지 않도록 최상단 레이어 배치 */
         nav { 
-            position: absolute; 
-            bottom: 0; 
-            width: 100%; 
-            height: 80px; 
-            z-index: 5000; 
+            height: 75px; 
+            display: flex; 
             background: white; 
             border-top: 1px solid #eee; 
-            display: flex; 
             padding-bottom: env(safe-area-inset-bottom); /* 아이폰 하단 바 대응 */
+            z-index: 9999;
         }
-        
-        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .nav-btn.active { color: #2563eb; font-weight: 800; }
-        .nav-btn.inactive { color: #94a3b8; }
 
-        .course-card { background: white; border-radius: 20px; overflow: hidden; border: 1px solid #eee; margin-bottom: 20px; }
-        
-        /* 트래킹 패널이 탭 위에 뜨도록 위치 조정 */
-        .tracking-panel { 
-            position: absolute; 
-            bottom: 95px; /* 탭 높이보다 위로 */
-            left: 16px; 
-            right: 16px; 
-            z-index: 2000; 
-            background: rgba(255, 255, 255, 0.95); 
-            backdrop-filter: blur(10px); 
-            padding: 20px; 
-            border-radius: 24px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; color: #94a3b8; }
+        .nav-btn.active { color: #2563eb; }
+
+        /* 트래킹 패널 위치 조정 */
+        .track-ui {
+            position: absolute;
+            bottom: 20px;
+            left: 15px;
+            right: 15px;
+            z-index: 500;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 25px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <header class="flex justify-between items-center px-6 shadow-sm">
-            <h1 class="text-xl font-black italic text-slate-900">FOOTPRINTS<span class="text-blue-600">.</span></h1>
-            <div id="rec-status" class="hidden flex items-center gap-2 bg-red-50 px-3 py-1 rounded-full">
-                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span class="text-[10px] font-bold text-red-600 uppercase">Live</span>
+    <div class="app-layout">
+        <header class="h-14 flex justify-between items-center px-6 border-bottom shrink-0 bg-white/90 backdrop-blur z-[9999]">
+            <h1 class="text-lg font-black italic tracking-tighter">FOOTPRINTS<span class="text-blue-600">.</span></h1>
+            <div id="rec-status" class="hidden flex items-center gap-1.5 bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
+                <div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                <span class="text-[9px] font-bold text-red-600 uppercase">Live</span>
             </div>
         </header>
 
-        <div class="content-area">
-            <section id="home-page" class="p-6 pt-20 pb-24 overflow-y-auto" style="display: block;">
+        <main>
+            <div id="home-page" class="page p-6" style="display: block;">
                 <h2 class="text-2xl font-black text-slate-900 mb-6">나의 활동</h2>
-                <div id="feed-list" class="space-y-6"></div>
-            </section>
+                <div id="feed-list" class="space-y-6 pb-10"></div>
+            </div>
 
-            <section id="map-page">
+            <div id="map-page" class="page overflow-hidden">
                 <div id="map"></div>
-                <div class="tracking-panel">
-                    <div class="flex justify-around items-center mb-5">
+                <div class="track-ui">
+                    <div class="flex justify-around mb-5">
                         <div class="text-center">
-                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Distance</p>
-                            <p id="dist-val" class="text-2xl font-black text-slate-900">0.0km</p>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Dist</p>
+                            <p id="dist-val" class="text-xl font-black">0.0km</p>
                         </div>
                         <div class="text-center">
-                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Photos</p>
-                            <p id="photo-val" class="text-2xl font-black text-slate-900">0</p>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Photo</p>
+                            <p id="photo-val" class="text-xl font-black">0</p>
                         </div>
                     </div>
-                    <div class="flex gap-3">
-                        <label id="cam-trigger" class="hidden w-14 h-14 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center cursor-pointer active:scale-90 transition">
-                            <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <div class="flex gap-2">
+                        <label class="hidden" id="cam-box">
                             <input type="file" id="real-cam" accept="image/*" capture="camera" class="hidden">
+                            <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center cursor-pointer shadow-sm border border-slate-200">
+                                📷
+                            </div>
                         </label>
-                        <button id="track-btn" onclick="toggleTracking()" class="flex-1 h-14 bg-blue-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition">트래킹 시작</button>
-                        <button onclick="saveCurrentCourse()" class="w-14 h-14 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center active:scale-90 transition">
-                            <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                        <button id="track-btn" onclick="toggleTracking()" class="flex-1 h-14 bg-blue-600 text-white font-black rounded-2xl shadow-lg">트래킹 시작</button>
+                        <button onclick="saveCurrentCourse()" class="w-14 h-14 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">
+                            💾
                         </button>
                     </div>
                 </div>
-            </section>
-        </div>
+            </div>
+        </main>
 
         <nav>
-            <button onclick="changePage('home')" id="nav-home" class="nav-btn active">
-                <span class="text-[10px] font-black tracking-widest uppercase">Explore</span>
-            </button>
-            <button onclick="changePage('map')" id="nav-map" class="nav-btn inactive">
-                <span class="text-[10px] font-black tracking-widest uppercase">Track</span>
-            </button>
+            <button onclick="changePage('home')" id="nav-home" class="nav-btn active">EXPLORE</button>
+            <button onclick="changePage('map')" id="nav-map" class="nav-btn">TRACK</button>
         </nav>
     </div>
 
     <script>
-        // 이전 스크립트 로직과 동일 (데이터 저장 및 페이지 전환 로직 포함)
         let map, polyline, watchId, isTracking = false;
         let currentPath = [], currentPhotos = [];
         let savedData = JSON.parse(localStorage.getItem('myFootprints')) || [];
@@ -121,7 +119,7 @@
         };
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([37.5665, 126.9780], 15);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([37.5665, 126.9780], 15);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
             polyline = L.polyline([], { color: '#2563eb', weight: 6, lineCap: 'round' }).addTo(map);
         }
@@ -129,21 +127,21 @@
         function changePage(target) {
             document.getElementById('home-page').style.display = target === 'home' ? 'block' : 'none';
             document.getElementById('map-page').style.display = target === 'map' ? 'block' : 'none';
-            document.getElementById('nav-home').className = target === 'home' ? 'nav-btn active' : 'nav-btn inactive';
-            document.getElementById('nav-map').className = target === 'map' ? 'nav-btn active' : 'nav-btn inactive';
+            document.getElementById('nav-home').classList.toggle('active', target === 'home');
+            document.getElementById('nav-map').classList.toggle('active', target === 'map');
             if(target === 'map') setTimeout(() => { map.invalidateSize(); }, 100);
         }
 
         function toggleTracking() {
             const btn = document.getElementById('track-btn');
-            const camTrigger = document.getElementById('cam-trigger');
+            const camBox = document.getElementById('cam-box');
             const status = document.getElementById('rec-status');
 
             if (!isTracking) {
                 isTracking = true;
                 currentPath = []; currentPhotos = []; polyline.setLatLngs([]);
                 btn.innerText = "중지"; btn.classList.replace('bg-blue-600', 'bg-slate-900');
-                camTrigger.classList.remove('hidden'); status.classList.remove('hidden');
+                camBox.classList.remove('hidden'); status.classList.remove('hidden');
                 startLocationWatch();
             } else {
                 isTracking = false;
@@ -170,7 +168,7 @@
             reader.onload = event => {
                 const img = event.target.result;
                 const pos = currentPath.length > 0 ? currentPath[currentPath.length - 1] : map.getCenter();
-                L.marker(pos).addTo(map).bindPopup(`<img src="${img}" style="width:100%; border-radius:12px;">`).openPopup();
+                L.marker(pos).addTo(map).bindPopup(`<img src="${img}" style="width:100%; border-radius:10px;">`).openPopup();
                 currentPhotos.push({ pos, url: img });
                 document.getElementById('photo-val').innerText = currentPhotos.length;
             };
@@ -200,22 +198,17 @@
 
         function updateFeed() {
             const container = document.getElementById('feed-list');
-            container.innerHTML = savedData.length === 0 ? '<p class="text-center py-20 text-slate-300">기록이 없습니다.</p>' : '';
+            container.innerHTML = savedData.length === 0 ? '<p class="text-center py-20 text-slate-300 font-bold">기록이 없습니다.</p>' : '';
             savedData.forEach((item, index) => {
                 const card = document.createElement('div');
-                card.className = "course-card";
+                card.className = "bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm";
                 card.onclick = () => loadCourseToMap(index);
                 card.innerHTML = `
-                    <div class="h-44 relative bg-slate-100">
-                        <img src="${item.thumbnail || ''}" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                        <p class="absolute bottom-4 left-5 text-white font-bold text-lg">${item.title}</p>
-                    </div>
-                    <div class="p-4 flex justify-between items-center bg-white">
-                        <span class="text-blue-600 font-black">${item.distance}</span>
+                    <div class="h-40 bg-slate-100"><img src="${item.thumbnail || ''}" class="w-full h-full object-cover"></div>
+                    <div class="p-5 flex justify-between items-center bg-white">
+                        <div><p class="font-bold text-slate-900">${item.title}</p><p class="text-blue-600 font-black">${item.distance}</p></div>
                         <span class="text-[10px] text-slate-400 font-bold uppercase">${item.date}</span>
-                    </div>
-                `;
+                    </div>`;
                 container.appendChild(card);
             });
         }
